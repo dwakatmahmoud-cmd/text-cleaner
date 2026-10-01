@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>منظّف النصوص — احذف المسافات والسطور الفارغة والتكرار بنقرة</title>
+<meta name="description" content="أداة مجانية لتنظيف النصوص الطويلة: إزالة المسافات الزائدة والسطور الفارغة والكلمات والسطور المكررة بنقرة واحدة. تعمل داخل متصفحك دون رفع نصك لأي خادم.">
+<style>
+:root{--bg:#eef2f4;--card:#fff;--ink:#14202a;--mute:#566574;--line:#d3dce2;--acc:#0a7c76;--accink:#fff;--chip:#e3edf0;--chipon:#c9e6e3}
+@media (prefers-color-scheme:dark){:root{--bg:#0e151b;--card:#16202a;--ink:#e8eef2;--mute:#93a3b0;--line:#2a3845;--acc:#2fc4ba;--accink:#06201e;--chip:#1e2b36;--chipon:#18423f}}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:"Segoe UI",Tahoma,"Noto Sans Arabic",system-ui,sans-serif;line-height:1.7;padding:max(16px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+main{max-width:960px;margin:0 auto}
+h1{font-size:1.6rem;margin:8px 0 2px;line-height:1.3}
+.sub{margin:0 0 18px;color:var(--mute)}
+.opts{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-bottom:14px}
+.opts label{display:inline-flex;align-items:center;gap:6px;background:var(--chip);border:1px solid transparent;border-radius:999px;padding:6px 14px;cursor:pointer;font-size:.95rem}
+.opts label:has(input:checked){background:var(--chipon);border-color:var(--acc)}
+.opts input[type=checkbox]{accent-color:var(--acc)}
+select{font:inherit;color:inherit;background:var(--card);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+.panels{display:grid;gap:14px;grid-template-columns:1fr}
+@media (min-width:760px){.panels{grid-template-columns:1fr 1fr}}
+.panel{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px;display:flex;flex-direction:column}
+.panel.out{border-top:3px solid var(--acc)}
+.head{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;font-weight:600}
+textarea{width:100%;min-height:260px;resize:vertical;font:inherit;font-size:1rem;color:inherit;background:transparent;border:0;outline:0;line-height:1.7}
+textarea:focus-visible{outline:2px solid var(--acc);outline-offset:4px;border-radius:4px}
+button{font:inherit;cursor:pointer;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:6px 14px}
+button:focus-visible,a:focus-visible,select:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.go{width:100%;margin:16px 0 10px;padding:12px;font-size:1.1rem;font-weight:700;background:var(--acc);color:var(--accink);border-color:var(--acc)}
+.result{min-height:1.7em;color:var(--mute);margin:0 0 6px}
+.result b{color:var(--ink)}
+.cnt{font-weight:400;font-size:.85rem;color:var(--mute)}
+.cnt.over{color:#d9534f;font-weight:700}
+.opts label.locked{opacity:.7}
+.pro{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 14px;margin-top:14px}
+.pro summary{cursor:pointer;font-weight:700}
+.pro .row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+.pro input[type=text]{flex:1;min-width:200px;font:inherit;color:inherit;background:transparent;border:1px solid var(--line);border-radius:8px;padding:6px 10px;direction:ltr}
+.buy{display:inline-block;background:var(--acc);color:var(--accink);padding:6px 16px;border-radius:8px;text-decoration:none;font-weight:700}
+.ad:empty{display:none}
+.ad{margin:18px 0;min-height:90px}
+footer{margin-top:22px;color:var(--mute);font-size:.9rem;display:flex;flex-wrap:wrap;gap:8px 18px;justify-content:space-between;align-items:center}
+footer a{color:var(--acc);font-weight:600}
+</style>
+</head>
+<body>
+<main>
+  <h1>منظّف النصوص</h1>
+  <p class="sub">الصق نصك الطويل، اختر ما تريد حذفه، ثم اضغط «نظّف النص».</p>
+
+  <div class="opts" role="group" aria-label="خيارات التنظيف">
+    <label><input type="checkbox" id="sp" checked> المسافات الزائدة</label>
+    <label><input type="checkbox" id="tr" checked> مسافات بداية السطر ونهايته</label>
+    <label><input type="checkbox" id="el" checked> السطور الفارغة</label>
+    <label><input type="checkbox" id="dl"> السطور المكررة</label>
+    <label id="tl" class="locked"><input type="checkbox" id="ts" disabled> <span id="tst">🔒 إزالة التشكيل والتطويل (للمشتركين)</span></label>
+    <label>الكلمات المكررة:
+      <select id="dw">
+        <option value="off">لا تحذف</option>
+        <option value="next" selected>المتتالية فقط (مثل: ذهب ذهب)</option>
+        <option value="all">كل تكرار في النص</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="panels">
+    <section class="panel">
+      <div class="head"><label for="in">النص الأصلي <span class="cnt" id="cnt"></span></label>
+        <span><button type="button" id="demo">مثال</button> <button type="button" id="clr">مسح</button></span></div>
+      <textarea id="in" placeholder="الصق النص هنا…"></textarea>
+    </section>
+    <section class="panel out">
+      <div class="head"><label for="out">النص بعد التنظيف</label>
+        <button type="button" id="cp">نسخ النتيجة</button></div>
+      <textarea id="out" readonly placeholder="ستظهر النتيجة هنا"></textarea>
+    </section>
+  </div>
+
+  <button type="button" class="go" id="go">نظّف النص</button>
+  <p class="result" id="res" aria-live="polite"></p>
+
+  <details class="pro" id="pro">
+    <summary id="ps">الإصدار المتقدم: نصوص بلا حد وإزالة التشكيل</summary>
+    <p>المجاني حتى 2000 حرف للمرة الواحدة. الاشتراك يفتح الحجم الكبير وإزالة التشكيل والتطويل.</p>
+    <!-- استبدل الرابط برابط الدفع من Lemon Squeezy (Share ← Copy link) -->
+    <div class="row"><a class="buy" href="https://YOUR_STORE.lemonsqueezy.com/buy/YOUR_PRODUCT_UUID" target="_blank" rel="noopener">اشترك الآن</a></div>
+    <div class="row"><input type="text" id="key" placeholder="الصق مفتاح الترخيص هنا" autocomplete="off" spellcheck="false"><button type="button" id="act">تفعيل</button></div>
+    <p class="result" id="pst" aria-live="polite"></p>
+  </details>
+
+  <!-- مساحة الإعلان: الصق كود AdSense هنا بعد الموافقة على موقعك. تبقى مخفية وهي فارغة -->
+  <div class="ad"></div>
+
+  <footer>
+    <span>يعمل النص داخل متصفحك فقط، ولا يُرسل إلى أي خادم.</span>
+    <!-- غيّر الرابط إلى صفحة الدعم الخاصة بك (Ko-fi أو Buy Me a Coffee أو غيرهما) -->
+    <a href="https://ko-fi.com/YOUR_NAME" target="_blank" rel="noopener">ادعم المشروع</a>
+  </footer>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const FREE_LIMIT = 2000;
+let pro = false;
+
+function clean(src) {
+  let t = src.replace(/\r\n?/g, '\n').replace(/[\u200B\uFEFF]/g, '');
+  if (pro && $('ts').checked) t = t.replace(/[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED\u0640]/g, '');
+  if ($('sp').checked) t = t.replace(/[ \t\u00A0]+/g, ' ');
+  let lines = t.split('\n');
+  if ($('tr').checked) lines = lines.map(s => s.trim());
+
+  const mode = $('dw').value;
+  if (mode !== 'off') {
+    const seen = new Set();
+    lines = lines.map(line => {
+      let prev = '';
+      return line.split(' ').filter(w => {
+        const k = w.toLowerCase().replace(/[^\p{L}\p{N}]/gu, '');
+        if (!k) return true;
+        if (mode === 'next') { const same = k === prev; prev = k; return !same; }
+        if (seen.has(k)) return false;
+        seen.add(k);
+        return true;
+      }).join(' ');
+    });
+  }
+
+  if ($('dl').checked) {
+    const seen = new Set();
+    lines = lines.filter(l => {
+      const k = l.trim().toLowerCase();
+      if (!k) return true;
+      if (seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    });
+  }
+
+  if ($('el').checked) lines = lines.filter(l => l.trim() !== '');
+  return lines.join('\n').trim();
+}
+
+const count = t => ({
+  c: t.length,
+  w: (t.match(/\S+/g) || []).length,
+  l: t ? t.split('\n').length : 0
+});
+
+function run() {
+  const src = $('in').value;
+  upd();
+  if (!src.trim()) { $('res').textContent = 'الصق نصًا في الحقل الأول أولًا.'; return; }
+  if (!pro && src.length > FREE_LIMIT) {
+    $('res').textContent = `طول النص ${src.length} حرفًا، والحد المجاني ${FREE_LIMIT}. قسّمه أو فعّل الاشتراك.`;
+    $('pro').open = true;
+    return;
+  }
+  const out = clean(src);
+  $('out').value = out;
+  const a = count(src), b = count(out);
+  $('res').innerHTML = (a.c === b.c)
+    ? 'النص نظيف أصلًا، لا يوجد ما يُحذف بهذه الخيارات.'
+    : `حُذف <b>${a.c - b.c}</b> حرفًا · الكلمات <b>${a.w}</b> ← <b>${b.w}</b> · السطور <b>${a.l}</b> ← <b>${b.l}</b>`;
+}
+
+async function copyOut() {
+  const v = $('out').value;
+  if (!v) { $('res').textContent = 'لا توجد نتيجة لنسخها بعد.'; return; }
+  try { await navigator.clipboard.writeText(v); }
+  catch { $('out').select(); document.execCommand('copy'); }
+  $('res').textContent = 'تم نسخ النتيجة.';
+}
+
+const KEY = 'tc_key';
+
+function upd() {
+  const n = $('in').value.length;
+  $('cnt').textContent = pro ? n + ' حرف' : n + ' / ' + FREE_LIMIT;
+  $('cnt').classList.toggle('over', !pro && n > FREE_LIMIT);
+}
+
+function setPro(on) {
+  pro = on;
+  $('ts').disabled = !on;
+  if (!on) $('ts').checked = false;
+  $('tst').textContent = on ? 'إزالة التشكيل والتطويل' : '🔒 إزالة التشكيل والتطويل (للمشتركين)';
+  $('tl').classList.toggle('locked', !on);
+  $('ps').textContent = on ? 'اشتراكك مفعّل ✓' : 'الإصدار المتقدم: نصوص بلا حد وإزالة التشكيل';
+  upd();
+}
+
+async function verify(key) {
+  const r = await fetch('/.netlify/functions/verify', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ key })
+  });
+  if (!r.ok) throw new Error('network');
+  return (await r.json()).valid === true;
+}
+
+$('act').onclick = async () => {
+  const key = $('key').value.trim();
+  if (!key) { $('pst').textContent = 'الصق المفتاح أولًا.'; return; }
+  $('pst').textContent = 'جارٍ التحقق…';
+  try {
+    if (await verify(key)) {
+      try { localStorage.setItem(KEY, key); } catch {}
+      setPro(true);
+      $('pst').textContent = 'تم التفعيل. شكرًا لدعمك!';
+    } else {
+      $('pst').textContent = 'المفتاح غير صالح أو انتهى اشتراكه.';
+    }
+  } catch { $('pst').textContent = 'تعذّر الاتصال، حاول مرة أخرى.'; }
+};
+
+$('tl').addEventListener('click', () => { if (!pro) $('pro').open = true; });
+$('in').addEventListener('input', upd);
+
+(async () => {
+  upd();
+  let k = '';
+  try { k = localStorage.getItem(KEY) || ''; } catch {}
+  if (!k) return;
+  try {
+    if (await verify(k)) setPro(true);
+    else { try { localStorage.removeItem(KEY); } catch {} }
+  } catch {}
+})();
+
+$('go').onclick = run;
+$('cp').onclick = copyOut;
+$('clr').onclick = () => { $('in').value = ''; $('out').value = ''; $('res').textContent = ''; upd(); $('in').focus(); };
+$('demo').onclick = () => {
+  $('in').value = '   هذا   نص  نص تجريبي   \n\n\n  فيه مسافات   زائدة  \n\nفيه مسافات زائدة\n\n   وكلمات مكررة مكررة   ';
+  run();
+};
+$('in').addEventListener('keydown', e => { if (e.ctrlKey && e.key === 'Enter') run(); });
+</script>
+</body>
+  </html>
+        
